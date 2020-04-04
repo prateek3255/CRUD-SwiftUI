@@ -14,7 +14,7 @@ import Foundation
 struct Employee: Codable {
     let id, employeeName, employeeSalary, employeeAge: String
     let profileImage: String?
-
+    
     enum CodingKeys: String, CodingKey {
         case id
         case employeeName = "employee_name"
@@ -29,38 +29,32 @@ struct Employees: Codable {
     let data: [Employee]
 }
 
-// MARK: - Helper functions for creating encoders and decoders
-
-func newJSONDecoder() -> JSONDecoder {
-    let decoder = JSONDecoder()
-    if #available(iOS 10.0, OSX 10.12, tvOS 10.0, watchOS 3.0, *) {
-        decoder.dateDecodingStrategy = .iso8601
-    }
-    return decoder
+struct ModelWrapper<T: Codable>: Codable {
+    let status: String
+    let data: [T]
 }
 
-func newJSONEncoder() -> JSONEncoder {
-    let encoder = JSONEncoder()
-    if #available(iOS 10.0, OSX 10.12, tvOS 10.0, watchOS 3.0, *) {
-        encoder.dateEncodingStrategy = .iso8601
-    }
-    return encoder
-}
-
-// MARK: - URLSession response handlers
-
-extension URLSession {
-    fileprivate func codableTask<T: Codable>(with url: URL, completionHandler: @escaping (T?, URLResponse?, Error?) -> Void) -> URLSessionDataTask {
-        return self.dataTask(with: url) { data, response, error in
+class EmployeeViewModel: ObservableObject {
+    @Published var employees = [Employee]()
+    
+    func fetchEmployees() {
+        let url = APIService(endpoint: .getEmployees).apiEndpoint
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
             guard let data = data, error == nil else {
-                completionHandler(nil, response, error)
                 return
             }
-            completionHandler(try? newJSONDecoder().decode(T.self, from: data), response, nil)
-        }
+            let decodedEmployees = try? JSONDecoder().decode(ModelWrapper<Employee>.self, from: data)
+            
+            if let decodedEmployees = decodedEmployees {
+                DispatchQueue.main.async {
+                    self.employees = decodedEmployees.data
+                }
+            }
+            
+        }.resume()
     }
-
-    func employeesTask(with url: URL, completionHandler: @escaping (Employees?, URLResponse?, Error?) -> Void) -> URLSessionDataTask {
-        return self.codableTask(with: url, completionHandler: completionHandler)
-    }
+    
+    
 }
+

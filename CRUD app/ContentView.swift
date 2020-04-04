@@ -9,12 +9,12 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var employees: [Employee] = []
+    @ObservedObject var employeesVM = EmployeeViewModel()
 
     var body: some View {
         VStack {
             List {
-                ForEach(employees, id: \.id) { employee in
+                ForEach(self.employeesVM.employees, id: \.id) { employee in
 
                     VStack(alignment: .leading) {
                         Text("\(employee.employeeName)")
@@ -24,16 +24,7 @@ struct ContentView: View {
                     }
                 }
             }
-        }.onAppear(perform: fetchEmployees)
-    }
-    
-    func fetchEmployees() {
-        let task = URLSession.shared.employeesTask(with: APIService(endpoint: .getEmployees).apiEndpoint) { employees, response, error in
-         if let employees = employees {
-            self.employees = employees.data
-         }
-       }
-       task.resume()
+        }.onAppear(perform: employeesVM.fetchEmployees)
     }
 }
 
